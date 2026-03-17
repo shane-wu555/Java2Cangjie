@@ -4,7 +4,7 @@
 
 - **FastAPI 模型服务**：负责加载量化模型（示例中为占位实现，可替换为 LLaMA Factory 推理逻辑）。
 - **Spring Boot 业务后端**：负责参数校验、接口聚合、转发推理请求。
-- **Vue3 前端**：提供用户输入 Java 代码并展示仓颉结果的页面。
+- **Vue CLI 前端**：提供用户输入 Java 代码并展示仓颉结果的页面。
 
 ## 目录结构
 
@@ -40,7 +40,7 @@ Spring Boot 暴露：
 2. Spring Boot 校验参数后调用 FastAPI `/api/v1/convert`。
 3. 收到模型输出后返回前端。
 
-## 3) Vue3 服务界面
+## 3) Vue CLI 服务界面
 
 界面能力：
 
@@ -70,7 +70,7 @@ mvn spring-boot:run
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run serve
 ```
 
 ## Docker 容器化部署
