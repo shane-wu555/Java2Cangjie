@@ -3,17 +3,19 @@ package com.java2cangjie.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class ConvertRequest {
     @NotBlank(message = "javaCode 不能为空")
+    @Size(max = 20000, message = "javaCode 不能超过 20000 字符")
     private String javaCode;
 
     @Min(16)
     @Max(4096)
-    private Integer maxNewTokens = 512;
+    private Integer maxNewTokens = 2048;
 
-    @Min(0)
-    @Max(2)
+    @Min(value = 0)
+    @Max(value = 2)
     private Double temperature = 0.1;
 
     public String getJavaCode() {

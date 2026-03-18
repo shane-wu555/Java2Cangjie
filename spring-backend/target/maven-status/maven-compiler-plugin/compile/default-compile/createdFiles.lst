@@ -1,0 +1,13 @@
+com\java2cangjie\dto\BackendHealthResponse.class
+com\java2cangjie\exception\DownstreamServiceException.class
+com\java2cangjie\config\CorsConfig.class
+com\java2cangjie\dto\ConvertResponse.class
+com\java2cangjie\Application.class
+com\java2cangjie\dto\ConvertRequest.class
+com\java2cangjie\exception\GlobalExceptionHandler.class
+com\java2cangjie\exception\InvalidDownstreamResponseException.class
+com\java2cangjie\service\ModelGatewayService.class
+com\java2cangjie\config\CorsConfig$1.class
+com\java2cangjie\config\RequestLoggingFilter.class
+com\java2cangjie\controller\ConvertController.class
+com\java2cangjie\dto\ApiErrorResponse.class
