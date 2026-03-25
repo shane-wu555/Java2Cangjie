@@ -1,2 +1,10 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
+transformers>=4.35.0
+datasets>=2.14.0
+accelerate>=0.20.0
+peft>=0.4.0
+torch>=2.0.0
+safetensors>=0.3.0
+bitsandbytes>=0.39.0
+

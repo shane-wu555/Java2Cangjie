@@ -86,3 +86,59 @@ docker compose up --build
 - FastAPI：`http://localhost:8001/health`
 
 > 生产环境中如需使用昇腾 NPU，请在容器运行参数中补充对应 runtime / device 挂载及驱动依赖。
+## Qwen2.5-7B-instruct 微调（本项目新增）
+
+### 快速开始（推荐）
+
+打开 `model-service` 目录，编辑 `quickstart.bat`（Windows CMD）或 `quickstart.ps1`（PowerShell）文件中的路径，然后运行即可：
+
+```powershell
+# PowerShell
+cd model-service
+.\quickstart.ps1
+```
+
+或直接双击 `quickstart.bat`。
+
+### 手动步骤
+
+1. 安装依赖：
+
+```bash
+cd model-service
+pip install -r requirements.txt
+```
+
+2. 使用 `finetune_qwen.py` 训练：
+
+```bash
+python finetune_qwen.py
+```
+
+3. 单例验证：
+
+```bash
+python eval_qwen.py
+```
+
+4. 启动服务：
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+5. API 接口：
+
+- `GET /health`
+- `POST /api/v1/convert` 绑定参数 `java_code` / `max_new_tokens` / `temperature`
+
+### 【重要】网络问题？使用本地模型
+
+如果无法从 Hugging Face 下载，查看 [LOCAL_MODEL_SETUP.md](model-service/LOCAL_MODEL_SETUP.md) 了解如何使用本地模型路径。
+
+简单示例：
+
+```powershell
+$env:BASE_MODEL = "D:\models\qwen-2.5b-instruct"
+python finetune_qwen.py
+```
