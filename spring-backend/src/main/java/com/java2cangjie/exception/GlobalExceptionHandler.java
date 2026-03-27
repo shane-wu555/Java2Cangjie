@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -22,6 +23,15 @@ public class GlobalExceptionHandler {
         FieldError fieldError = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
         String message = fieldError != null ? fieldError.getDefaultMessage() : "请求参数校验失败";
         return buildErrorResponse(HttpStatus.BAD_REQUEST, message, request.getRequestURI());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(
+            ResponseStatusException ex,
+            HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        return buildErrorResponse(status, ex.getReason(), request.getRequestURI());
     }
 
     @ExceptionHandler(DownstreamServiceException.class)
