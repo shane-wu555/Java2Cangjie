@@ -93,7 +93,7 @@ public class ModelGatewayService {
             }
 
             ConvertResponse response = new ConvertResponse();
-            response.setCangjieCode(readRequiredString(result, "cangjie_code"));
+            response.setCangjieCode(postProcess(readRequiredString(result, "cangjie_code")));
             response.setModelName(readRequiredString(result, "model_name"));
             response.setQuantization(readRequiredString(result, "quantization"));
             response.setLatencyMs(readInteger(result.get("latency_ms"), "latency_ms"));
@@ -164,5 +164,17 @@ public class ModelGatewayService {
             return booleanValue;
         }
         throw new InvalidDownstreamResponseException("模型服务返回字段类型错误: " + key);
+    }
+
+    /**
+     * 对模型输出做确定性后处理，修正高频类型映射和命名偏差。
+     */
+    private String postProcess(String code) {
+        if (code == null) return null;
+        return code
+                // Java long → 仓颉 Int64（UInt64 是无符号，通常 long 对应有符号 Int64）
+                .replace(": UInt32\n", ": UInt64\n")
+                // interface 内冗余的 open 修饰符
+                .replaceAll("(?m)^(\\s*)open func ", "$1func ");
     }
 }

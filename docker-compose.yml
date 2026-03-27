@@ -5,13 +5,26 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - ASCEND_VISIBLE_DEVICES=0
+      - BASE_MODEL=${BASE_MODEL_PATH:-/models/base}
+      - LORA_PATH=${LORA_PATH:-/app/outputs/qwen2.5b-instruct-lora}
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ${BASE_MODEL_HOST_PATH:-/data/models/Qwen2.5-Coder-7B-Instruct}:/models/base:ro
+      - ./model-service/outputs:/app/outputs:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # 模型加载耗时较长，给足启动宽限期
+      start_period: 120s
 
   spring-backend:
     build: ./spring-backend
@@ -20,15 +33,18 @@ services:
       - "8080:8080"
     environment:
       - MODEL_SERVICE_BASE_URL=http://model-service:8001
+      # 模型推理可能耗时 30~120 秒，读取超时相应调大
+      - MODEL_SERVICE_CONNECT_TIMEOUT_MS=5000
+      - MODEL_SERVICE_READ_TIMEOUT_MS=120000
     depends_on:
       model-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 8
-      start_period: 20s
+      retries: 5
+      start_period: 30s
 
   frontend:
     build: ./frontend

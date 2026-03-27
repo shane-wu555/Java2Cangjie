@@ -5,7 +5,7 @@ import os
 
 try:
     import torch
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
     from peft import PeftModel
 except Exception as e:
     # 运行时无依赖会在 load() 抛错
@@ -43,27 +43,42 @@ class ModelRuntime:
         if torch is None:
             raise RuntimeError(f"torch/transformers/peft未安装: {peft_load_error}")
 
-        base_model = os.environ.get("BASE_MODEL", "qwen/Qwen-2.5B-instruct")
-        lora_path = os.environ.get("LORA_PATH", "outputs/qwen2.5b-instruct-lora")
+        service_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        base_model = os.environ.get("BASE_MODEL", r"D:\models\Qwen2.5-Coder-7B-Instruct")
+        lora_path = os.environ.get("LORA_PATH", os.path.join(service_dir, "outputs", "qwen2.5b-instruct-lora"))
 
         # 选择DeviceMap以支持可用GPU或CPU
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        use_cuda = torch.cuda.is_available()
 
         self.tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
 
-        # 先加载基础模型（可根据需求调整quantization_config）
-        self.model = AutoModelForCausalLM.from_pretrained(
-            base_model,
-            device_map="auto" if torch.cuda.is_available() else {"": "cpu"},
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            trust_remote_code=True,
-        )
+        # 4-bit 量化配置：将内存需求从 ~14GB 压缩到 ~4GB，CPU 模式下跳过
+        if use_cuda:
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                base_model,
+                quantization_config=quantization_config,
+                device_map="auto",
+                trust_remote_code=True,
+            )
+            self.quantization = "4bit(NF4) + LoRA"
+        else:
+            # CPU 模式：使用 float32，内存约 28GB，仅用于测试
+            self.model = AutoModelForCausalLM.from_pretrained(
+                base_model,
+                device_map={"": "cpu"},
+                dtype=torch.float32,
+                trust_remote_code=True,
+            )
+            self.quantization = "float32(CPU) + LoRA"
 
         # 应用LoRA权重
-        self.model = PeftModel.from_pretrained(self.model, lora_path, torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
-
-        if not torch.cuda.is_available():
-            self.model.to("cpu")
+        self.model = PeftModel.from_pretrained(self.model, lora_path)
 
         self.model.eval()
         self.loaded = True
@@ -72,7 +87,18 @@ class ModelRuntime:
         if not self.loaded or self.model is None or self.tokenizer is None:
             raise RuntimeError("模型尚未加载，请先调用 load()")
 
-        prompt = f"### 指令：将以下Java代码转换为仓舉编码\n### 输入：\n{java_code.strip()}\n### 输出：\n"
+        prompt = (
+            "### 指令：将以下Java代码转换为仓颉代码。\n"
+            "转换规则：\n"
+            "1. Java基本类型映射：int→Int32, long→Int64, float→Float32, double→Float64, boolean→Bool, byte→Byte, char→Char\n"
+            "2. struct的公有字段名使用PascalCase（首字母大写），如filename→Filename\n"
+            "3. 构造方法中使用this而非self引用成员\n"
+            "4. interface中的默认方法直接用func，不加open修饰符\n"
+            "5. 去掉new关键字，直接调用构造器\n"
+            "### 输入：\n"
+            f"{java_code.strip()}\n"
+            "### 输出：\n"
+        )
 
         inputs = self.tokenizer(
             prompt,
@@ -91,9 +117,9 @@ class ModelRuntime:
             out_ids = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                temperature=temperature,
+                temperature=temperature if temperature > 0 else 1.0,
                 top_p=0.95,
-                do_sample=False,
+                do_sample=temperature > 0,
                 eos_token_id=self.tokenizer.eos_token_id,
                 pad_token_id=self.tokenizer.pad_token_id,
             )
