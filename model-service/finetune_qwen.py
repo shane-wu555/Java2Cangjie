@@ -97,14 +97,14 @@ if __name__ == "__main__":
 
     training_args = TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        gradient_accumulation_steps=8,
+        per_device_train_batch_size=4,
+        per_device_eval_batch_size=4,
+        gradient_accumulation_steps=2,
         warmup_steps=100,
         num_train_epochs=2,
         learning_rate=2e-4,
         fp16=True,
-        logging_steps=1,
+        logging_steps=10,
         eval_strategy="steps",
         eval_steps=200,
         save_strategy="steps",
