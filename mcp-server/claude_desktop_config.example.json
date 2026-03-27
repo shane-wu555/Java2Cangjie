@@ -1,0 +1,14 @@
+{
+  "_comment": "将此配置合并到 Claude Desktop 的 claude_desktop_config.json 中",
+  "_location_windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
+  "_location_macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
+  "mcpServers": {
+    "java2cangjie": {
+      "command": "python",
+      "args": ["E:/Java2Cangjie/mcp-server/server.py"],
+      "env": {
+        "MODEL_SERVICE_URL": "http://localhost:8001"
+      }
+    }
+  }
+}
