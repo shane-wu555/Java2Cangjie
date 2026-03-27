@@ -267,6 +267,7 @@ async function submit() {
   if (!canSubmit.value || isViewingHistory.value) return
   loading.value = true
   const currentCode = javaCode.value.trim()
+  javaCode.value = ''
   const now = new Date()
   await nextTick()
   scrollToBottom()
