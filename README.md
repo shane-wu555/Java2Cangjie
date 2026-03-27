@@ -5,6 +5,7 @@
 - **FastAPI 模型服务**：加载 Qwen2.5-Coder-7B-Instruct + LoRA 权重（4-bit NF4 量化），提供推理接口。
 - **Spring Boot 业务后端**：用户注册/登录（SHA-256 + salt 哈希）、参数校验、转发推理请求。
 - **Vue 3 前端**：Chat 风格界面，支持多会话管理、语法高亮、文件导入/下载。
+- **MCP Server**：将转译服务封装为标准 MCP 工具，供 Claude Desktop / VS Code Copilot / Cursor 等 AI 客户端直接调用。
 
 ## 系统架构
 
@@ -35,6 +36,10 @@ Qwen2.5-Coder-7B-Instruct + LoRA (4-bit NF4)
 │   └── outputs/        # LoRA adapter 权重（qwen2.5b-instruct-lora/）
 ├── spring-backend/     # Spring Boot 3 / Java 17 网关服务
 ├── frontend/           # Vue 3 + Vue Router + Axios
+├── mcp-server/         # MCP Server，封装转译工具供 AI 客户端调用
+│   ├── server.py       # MCP 工具定义，支持 stdio / SSE 两种传输模式
+│   ├── requirements.txt
+│   └── claude_desktop_config.example.json  # Claude Desktop 接入示例
 └── docker-compose.yml  # 容器编排
 ```
 
@@ -217,6 +222,61 @@ python eval_qwen.py       # 单样本验证
 
 ---
 
+## 5. MCP Server
+
+MCP Server 将转译能力封装为标准 [Model Context Protocol](https://modelcontextprotocol.io/) 工具，让任何兼容 MCP 协议的 AI 客户端（Claude Desktop、VS Code GitHub Copilot、Cursor 等）可以直接调用 Java → 仓颉转译，无需打开 Web 界面。
+
+### MCP 工具列表
+
+| 工具名 | 说明 |
+|--------|------|
+| `convert_java_to_cangjie` | 将 Java 源代码转译为仓颉代码 |
+| `check_model_status` | 查询模型服务健康状态（`loaded`, `model`, `quantization`, `error`）|
+
+#### `convert_java_to_cangjie` 参数
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `java_code` | str | 必填 | 待转换的 Java 源代码 |
+| `max_new_tokens` | int | 512 | 最大生成 token 数（16～4096）|
+| `temperature` | float | 0.1 | 生成温度（0.0 为确定性输出）|
+
+### 运行模式
+
+| 模式 | 适用场景 | 启动命令 |
+|------|----------|----------|
+| `stdio` | Claude Desktop / VS Code Copilot（本地进程）| `python server.py` |
+| `sse` | Docker 容器 / 远程部署 | `python server.py --transport sse --port 8002` |
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MODEL_SERVICE_URL` | `http://localhost:8001` | 模型服务地址 |
+
+### Claude Desktop 接入
+
+将 `mcp-server/claude_desktop_config.example.json` 的内容合并至 Claude Desktop 配置文件：
+
+- Windows：`%APPDATA%\Claude\claude_desktop_config.json`
+- macOS：`~/Library/Application Support/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "java2cangjie": {
+      "command": "python",
+      "args": ["E:/Java2Cangjie/mcp-server/server.py"],
+      "env": {
+        "MODEL_SERVICE_URL": "http://localhost:8001"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## 本地运行
 
 ### 1. 模型服务（FastAPI）
@@ -242,6 +302,17 @@ mvn spring-boot:run
 cd frontend
 npm install
 npm run serve
+```
+
+### 4. MCP Server（可选）
+
+```bash
+cd mcp-server
+pip install -r requirements.txt
+# stdio 模式（Claude Desktop / VS Code Copilot）
+python server.py
+# SSE 模式（HTTP 远程调用）
+python server.py --transport sse --port 8002
 ```
 
 访问地址：
