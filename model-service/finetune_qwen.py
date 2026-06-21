@@ -9,6 +9,7 @@ from transformers import (
     BitsAndBytesConfig,
 )
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from prompt_utils import make_prompt as canonical_prompt
 
 
 def make_prompt(instruction: str, input_text: str) -> str:
@@ -34,7 +35,7 @@ def preprocess(examples, tokenizer, max_length=2048):
     all_labels = []
 
     for ins, inp, out in zip(instructions, inputs, outputs):
-        prompt = make_prompt(ins, inp)
+        prompt = canonical_prompt(inp, ins)
         answer = ((out or "").strip()) + tokenizer.eos_token
 
         prompt_ids = tokenizer(prompt, add_special_tokens=False)["input_ids"]
@@ -45,9 +46,12 @@ def preprocess(examples, tokenizer, max_length=2048):
         attention_mask = [1] * len(input_ids)
 
         if len(input_ids) > max_length:
-            input_ids = input_ids[:max_length]
-            labels = labels[:max_length]
-            attention_mask = attention_mask[:max_length]
+            # Keep answer supervision; prepare_dataset.py should normally filter these rows.
+            answer_ids = answer_ids[:max_length]
+            prompt_ids = prompt_ids[-max(0, max_length - len(answer_ids)):]
+            input_ids = prompt_ids + answer_ids
+            labels = [-100] * len(prompt_ids) + answer_ids
+            attention_mask = [1] * len(input_ids)
 
         pad_len = max_length - len(input_ids)
         if pad_len > 0:
@@ -174,9 +178,9 @@ def main():
 
     training_args = TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=2,
-        gradient_accumulation_steps=2,
+        per_device_train_batch_size=per_device_train_batch_size,
+        per_device_eval_batch_size=per_device_eval_batch_size,
+        gradient_accumulation_steps=gradient_accumulation_steps,
         warmup_steps=100,
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,

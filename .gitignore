@@ -1,2 +1,75 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE and editor state
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+*~
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.venv/
+venv/
+env/
+
+# Python caches, tooling, and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Python runtime output
+*.log
+*.pid
+*.tmp
+*.temp
+
+# Model evaluation output generated locally
+model-service/eval_results*.jsonl
+model-service/outputs/*_predictions.jsonl
+model-service/outputs/*.compile.json
+
+# New training checkpoints and experiment trackers
+model-service/outputs/**/checkpoint-*/
+model-service/wandb/
+model-service/runs/
+
+# Node / Vue
 frontend/node_modules/
 frontend/dist/
+frontend/.cache/
+frontend/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Maven / Java
+spring-backend/target/
+*.class
+hs_err_pid*
+replay_pid*
+
+# Test and temporary directories
+.cache/
+.tmp/
+tmp/
+coverage/

@@ -4,6 +4,7 @@ import json
 import time
 import os
 from typing import Any
+from prompt_utils import make_prompt
 
 try:
     import torch
@@ -36,7 +37,7 @@ class ConvertResponse(BaseModel):
 class ModelRuntime:
     def __init__(self) -> None:
         self.loaded = False
-        self.model_name = "Qwen2.5-7B-instruct"
+        self.model_name = "Qwen2.5-Coder-7B-Instruct"
         self.quantization = "4bit + LoRA"
         self.model = None
         self.tokenizer = None
@@ -53,6 +54,8 @@ class ModelRuntime:
         use_cuda = torch.cuda.is_available()
 
         self.tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # 4-bit 量化配置：将内存需求从 ~14GB 压缩到 ~4GB，CPU 模式下跳过
         if use_cuda:
@@ -89,24 +92,7 @@ class ModelRuntime:
         if not self.loaded or self.model is None or self.tokenizer is None:
             raise RuntimeError("模型尚未加载，请先调用 load()")
 
-        prompt = (
-            "### 指令：将以下Java代码转换为仓颉代码。\n"
-            "转换规则：\n"
-            "1. Java基本类型映射：int→Int32, long→Int64, float→Float32, double→Float64, boolean→Bool, byte→Byte, char→Char\n"
-            "2. 命名规则：\n"
-            "   - struct/class 的公有字段名使用PascalCase（首字母大写），如filename→Filename\n"
-            "   - 局部变量、函数参数、方法内的临时变量必须保持camelCase（首字母小写），严禁转为PascalCase，如 int x=42 → let x: Int32 = 42\n"
-            "   - 函数名、方法名保持camelCase，如 main、printValue\n"
-            "3. 构造方法中使用this而非self引用成员\n"
-            "4. interface中的默认方法直接用func，不加open修饰符\n"
-            "5. 去掉new关键字，直接调用构造器\n"
-            "6. Java的 System.out.println(x) 转换为仓颉的 println(x)\n"
-            "7. Java的 public static void main(String[] args) 转换为仓颉的 main(): Unit\n"
-            "8. 变量声明：局部变量若绑定后不再重新赋值（包括引用类型只修改元素内容），使用 let；仅当变量本身需要重新赋值时才使用 var\n"
-            "### 输入：\n"
-            f"{java_code.strip()}\n"
-            "### 输出：\n"
-        )
+        prompt = make_prompt(java_code)
 
         inputs = self.tokenizer(
             prompt,
@@ -115,11 +101,8 @@ class ModelRuntime:
             max_length=2048,
         )
 
-        if torch.cuda.is_available():
-            inputs = {k: v.cuda() for k, v in inputs.items()}
-            self.model.to("cuda")
-        else:
-            self.model.to("cpu")
+        model_device = next(self.model.parameters()).device
+        inputs = {k: v.to(model_device) for k, v in inputs.items()}
 
         with torch.no_grad():
             out_ids = self.model.generate(
@@ -132,7 +115,7 @@ class ModelRuntime:
                 pad_token_id=self.tokenizer.pad_token_id,
             )
 
-        generated = self.tokenizer.decode(out_ids[0], skip_special_tokens=True)
+        generated = self.tokenizer.decode(out_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
 
         # 去掉 Prompt 前缀，保留模型生成部分
         if prompt in generated:

@@ -7,6 +7,7 @@ from difflib import SequenceMatcher
 import torch
 from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from prompt_utils import make_prompt as canonical_prompt
 
 
 def make_prompt(java_code: str) -> str:
@@ -55,13 +56,13 @@ def similarity_score(pred: str, ref: str) -> float:
 
 def fidelity_grade(score: float) -> str:
     if score >= 0.85:
-        return "高保真"
+        return "高字符相似"
     if score >= 0.60:
-        return "中等"
-    return "低保真"
+        return "中字符相似"
+    return "低字符相似"
 
 def generate_one(model, tokenizer, run_device: str, java_code: str, max_new_tokens: int) -> str:
-    prompt = make_prompt(java_code)
+    prompt = canonical_prompt(java_code)
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
     inputs = {key: value.to(run_device) for key, value in inputs.items()}
     prompt_length = inputs["input_ids"].shape[1]
@@ -157,8 +158,8 @@ if __name__ == "__main__":
             "index": index,
             "smoke_pass": ok,
             "issues": issues,
-            "similarity": round(sim, 4),
-            "fidelity": grade,
+            "character_similarity": round(sim, 4),
+            "character_similarity_band": grade,
             "latency_ms": latency_ms,
             "java_input": java_code,
             "prediction": prediction,

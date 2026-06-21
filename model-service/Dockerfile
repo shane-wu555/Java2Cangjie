@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 只复制业务代码，模型权重通过 volume 挂载
 COPY app ./app
+COPY prompt_utils.py ./prompt_utils.py
 
 EXPOSE 8001
 
